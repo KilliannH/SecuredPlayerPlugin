@@ -79,8 +79,8 @@ class _AudioAppState extends State<AudioApp> {
         });
   }
 
-  Future play(String url, String apiKey) async {
-    await audioPlayer.play(url, apiKey);
+  Future play({String url, String apiKey}) async {
+    await audioPlayer.play(url: url, apiKey: apiKey);
     setState(() {
       playerState = PlayerState.playing;
     });
@@ -137,7 +137,9 @@ class _AudioAppState extends State<AudioApp> {
       children: [
         Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
-            onPressed: isPlaying ? null : () => play("YOUR URL HERE", "YOUR AUTHORIZATION HEADER HERE"),
+            onPressed: isPlaying ? null : () => play(
+                url:"http://192.168.1.22:3000/api/stream/katy_perry_oliver_heldens_daisies.mp3",
+                apiKey:"hello_dolly1234"),
             iconSize: 64.0,
             icon: Icon(Icons.play_arrow),
             color: Colors.cyan,
@@ -158,6 +160,9 @@ class _AudioAppState extends State<AudioApp> {
         if (duration != null)
           Slider(
               value: position?.inMilliseconds?.toDouble() ?? 0.0,
+              onChanged: (double value) {
+                return audioPlayer.seek((value / 1000).roundToDouble());
+              },
               min: 0.0,
               max: duration.inMilliseconds.toDouble()),
         if (position != null) _buildProgressView()
