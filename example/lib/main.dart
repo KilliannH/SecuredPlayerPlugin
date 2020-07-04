@@ -138,8 +138,8 @@ class _AudioAppState extends State<AudioApp> {
         Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             onPressed: isPlaying ? null : () => play(
-                url:"http://192.168.1.22:3000/api/stream/katy_perry_oliver_heldens_daisies.mp3",
-                apiKey:"hello_dolly1234"),
+                url:"YOUR URL HERE",
+                apiKey:"YOUR API KEY HERE"),
             iconSize: 64.0,
             icon: Icon(Icons.play_arrow),
             color: Colors.cyan,
