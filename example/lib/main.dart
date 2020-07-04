@@ -160,9 +160,7 @@ class _AudioAppState extends State<AudioApp> {
         if (duration != null)
           Slider(
               value: position?.inMilliseconds?.toDouble() ?? 0.0,
-              onChanged: (double value) {
-                return audioPlayer.seek((value / 1000).roundToDouble());
-              },
+              onChanged: null,
               min: 0.0,
               max: duration.inMilliseconds.toDouble()),
         if (position != null) _buildProgressView()

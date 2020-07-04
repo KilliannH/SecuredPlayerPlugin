@@ -46,10 +46,6 @@ class SecuredPlayerFlutterPlugin {
   /// Stop the currently playing stream.
   Future<void> stop() async => await _channel.invokeMethod('stop');
 
-  /// Seek to a specific position in the audio stream.
-  Future<void> seek(double seconds) async =>
-      await _channel.invokeMethod('seek', seconds);
-
   /// Stream for subscribing to player state change events.
   Stream<SecuredAudioPlayerState> get onPlayerStateChanged =>
       _playerStateController.stream;

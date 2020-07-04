@@ -66,18 +66,9 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
         stop();
         result.success(null);
         break;
-      case "seek":
-        double position = call.arguments();
-        seek(position);
-        result.success(null);
-        break;
       default:
         result.notImplemented();
     }
-  }
-
-  private void seek(double position) {
-    mediaPlayer.seekTo((int) (position * 1000));
   }
 
   private void stop() {
