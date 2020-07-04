@@ -1,3 +1,4 @@
-## 0.0.1
+## 1.0.0
 
-* TODO: Describe initial release.
+This release is a first attempt to publish a plugin on Flutter.
+It allows developers to query a remote url via HTTP with an argument on Authorization Header.
