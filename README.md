@@ -1,6 +1,11 @@
 # securedplayerflutterplugin
 
-A new Flutter plugin.
+This plugin is a fork from rxlabz's audioplayer plugin.
+It's an audioPlayer that plays streamed music. The player accepts an api key as an argument
+that will be set in the authorization header of the HTTP request.
+
+It does not handle seek functionality (yet).
+It has no test coverage (yet).
 
 ## Getting Started
 
