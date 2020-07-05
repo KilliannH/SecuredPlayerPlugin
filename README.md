@@ -6,6 +6,8 @@ that will be set in the authorization header of the HTTP request.
 
 It does not handle seek functionality (yet).
 It has no test coverage (yet).
+/ ! \ don't forget to use a protocol for your remote url (http, https.. etc),
+otherwise android will think you try to play a localfile.
 
 ## Getting Started
 
