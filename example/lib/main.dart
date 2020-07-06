@@ -24,6 +24,8 @@ class _AudioAppState extends State<AudioApp> {
   Duration duration;
   Duration position;
 
+  Map<String, dynamic> httpRequest;
+
   SecuredPlayerFlutterPlugin audioPlayer;
 
   String localFilePath;
@@ -56,7 +58,7 @@ class _AudioAppState extends State<AudioApp> {
     super.dispose();
   }
 
-  void initAudioPlayer() {
+  void initAudioPlayer() async {
     audioPlayer = SecuredPlayerFlutterPlugin();
     _positionSubscription = audioPlayer.onAudioPositionChanged
         .listen((p) => setState(() => position = p));
@@ -77,10 +79,13 @@ class _AudioAppState extends State<AudioApp> {
             position = Duration(seconds: 0);
           });
         });
+    await audioPlayer.init(url: httpRequest['url'], apiKey: httpRequest['apiKey']);
+    // this will fail bcs httpRequest hasn't been defined
+    playerState = PlayerState.playing;
   }
 
-  Future play({String url, String apiKey}) async {
-    await audioPlayer.play(url: url, apiKey: apiKey);
+  Future play() async {
+    await audioPlayer.play();
     setState(() {
       playerState = PlayerState.playing;
     });
@@ -137,9 +142,7 @@ class _AudioAppState extends State<AudioApp> {
       children: [
         Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
-            onPressed: isPlaying ? null : () => play(
-                url:"YOUR URL HERE",
-                apiKey:"YOUR API KEY HERE"),
+            onPressed: isPlaying ? null : () => play(),
             iconSize: 64.0,
             icon: Icon(Icons.play_arrow),
             color: Colors.cyan,
