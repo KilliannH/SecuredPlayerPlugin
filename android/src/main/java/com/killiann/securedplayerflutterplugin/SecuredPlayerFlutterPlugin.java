@@ -4,12 +4,15 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Objects;
 
 import io.flutter.Log;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -51,19 +54,24 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
     am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.KITKAT)
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
     switch (call.method) {
+      case "init":
+        init(Objects.requireNonNull(call.argument("url")).toString(), Objects.requireNonNull(call.argument("api_key").toString()));
+        result.success(null);
+        break;
       case "play":
-        play(call.argument("url").toString(), call.argument("api_key").toString());
+        play();
         result.success(null);
         break;
       case "pause":
         pause();
         result.success(null);
         break;
-      case "stop":
-        stop();
+      case "destroy":
+        destroy();
         result.success(null);
         break;
       default:
@@ -71,13 +79,13 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
     }
   }
 
-  private void stop() {
+  private void destroy() {
     handler.removeCallbacks(sendData);
     if (mediaPlayer != null) {
       mediaPlayer.stop();
       mediaPlayer.release();
       mediaPlayer = null;
-      channel.invokeMethod("audio.onStop", null);
+      channel.invokeMethod("audio.onDestroy", null);
     }
   }
 
@@ -89,15 +97,22 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
     }
   }
 
-  private void play(String url, String api_key) {
+  private void play() {
+    if(mediaPlayer != null) {
+      mediaPlayer.start();
+      channel.invokeMethod("audio.onStart", mediaPlayer.getDuration());
+    } else {
+      Log.w("mediaPlayer", "error on play(), mediaPlayer is not defined");
+    }
+  }
+
+  private void init(String url, String api_key) {
     if (mediaPlayer == null) {
       mediaPlayer = new MediaPlayer();
       mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
       HashMap<String, String> headers = new HashMap<String, String>();
       headers.put("Authorization", api_key);
-
-      Log.w("api_key", api_key);
 
       Uri uri = Uri.parse(url);
 
@@ -134,8 +149,7 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
         }
       });
     } else {
-      mediaPlayer.start();
-      channel.invokeMethod("audio.onStart", mediaPlayer.getDuration());
+      Log.w("mediaPlayer", "error on init(), mediaPlayer is already initialized");
     }
     handler.post(sendData);
   }

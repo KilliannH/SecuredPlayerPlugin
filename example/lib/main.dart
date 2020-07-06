@@ -13,7 +13,7 @@ void main() {
   runApp(MaterialApp(home: Scaffold(body: AudioApp())));
 }
 
-enum PlayerState { stopped, playing, paused }
+enum PlayerState { destroyed, playing, paused }
 
 class AudioApp extends StatefulWidget {
   @override
@@ -28,7 +28,7 @@ class _AudioAppState extends State<AudioApp> {
 
   String localFilePath;
 
-  PlayerState playerState = PlayerState.stopped;
+  PlayerState playerState = PlayerState.destroyed;
 
   get isPlaying => playerState == PlayerState.playing;
   get isPaused => playerState == PlayerState.paused;
@@ -52,7 +52,7 @@ class _AudioAppState extends State<AudioApp> {
   void dispose() {
     _positionSubscription.cancel();
     _audioPlayerStateSubscription.cancel();
-    audioPlayer.stop();
+    audioPlayer.destroy();
     super.dispose();
   }
 
@@ -64,7 +64,7 @@ class _AudioAppState extends State<AudioApp> {
         audioPlayer.onPlayerStateChanged.listen((s) {
           if (s == SecuredAudioPlayerState.PLAYING) {
             setState(() => duration = audioPlayer.duration);
-          } else if (s == SecuredAudioPlayerState.STOPPED) {
+          } else if (s == SecuredAudioPlayerState.DESTROYED) {
             onComplete();
             setState(() {
               position = duration;
@@ -72,7 +72,7 @@ class _AudioAppState extends State<AudioApp> {
           }
         }, onError: (msg) {
           setState(() {
-            playerState = PlayerState.stopped;
+            playerState = PlayerState.destroyed;
             duration = Duration(seconds: 0);
             position = Duration(seconds: 0);
           });
@@ -91,16 +91,16 @@ class _AudioAppState extends State<AudioApp> {
     setState(() => playerState = PlayerState.paused);
   }
 
-  Future stop() async {
-    await audioPlayer.stop();
+  Future destroy() async {
+    await audioPlayer.destroy();
     setState(() {
-      playerState = PlayerState.stopped;
+      playerState = PlayerState.destroyed;
       position = Duration();
     });
   }
 
   void onComplete() {
-    setState(() => playerState = PlayerState.stopped);
+    // todo impl STOPPED STATE
   }
 
   @override
@@ -151,7 +151,7 @@ class _AudioAppState extends State<AudioApp> {
             color: Colors.cyan,
           ),
           IconButton(
-            onPressed: isPlaying || isPaused ? () => stop() : null,
+            onPressed: isPlaying || isPaused ? () => /*impl stop() :*/ null : null,
             iconSize: 64.0,
             icon: Icon(Icons.stop),
             color: Colors.cyan,

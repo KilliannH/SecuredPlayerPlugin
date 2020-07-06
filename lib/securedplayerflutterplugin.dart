@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 enum SecuredAudioPlayerState {
   /// Player is stopped. No file is loaded to the player. Calling [resume] or
   /// [pause] will result in exception.
-  STOPPED,
+  DESTROYED,
 
   /// Currently playing a file. The user can [pause], [resume] or [stop] the
   /// playback.
@@ -29,7 +29,7 @@ class SecuredPlayerFlutterPlugin {
   final StreamController<Duration> _positionController =
   new StreamController.broadcast();
 
-  SecuredAudioPlayerState _state = SecuredAudioPlayerState.STOPPED;
+  SecuredAudioPlayerState _state = SecuredAudioPlayerState.DESTROYED;
   Duration _duration = const Duration();
 
   SecuredPlayerFlutterPlugin() {
@@ -43,8 +43,8 @@ class SecuredPlayerFlutterPlugin {
   /// Pause the currently playing stream.
   Future<void> pause() async => await _channel.invokeMethod('pause');
 
-  /// Stop the currently playing stream.
-  Future<void> stop() async => await _channel.invokeMethod('stop');
+  /// Destroy the player.
+  Future<void> destroy() async => await _channel.invokeMethod('destroy');
 
   /// Stream for subscribing to player state change events.
   Stream<SecuredAudioPlayerState> get onPlayerStateChanged =>
@@ -80,9 +80,9 @@ class SecuredPlayerFlutterPlugin {
         _state = SecuredAudioPlayerState.PAUSED;
         _playerStateController.add(SecuredAudioPlayerState.PAUSED);
         break;
-      case "audio.onStop":
-        _state = SecuredAudioPlayerState.STOPPED;
-        _playerStateController.add(SecuredAudioPlayerState.STOPPED);
+      case "audio.onDestroy":
+        _state = SecuredAudioPlayerState.DESTROYED;
+        _playerStateController.add(SecuredAudioPlayerState.DESTROYED);
         break;
       case "audio.onComplete":
         _state = SecuredAudioPlayerState.COMPLETED;
@@ -90,11 +90,10 @@ class SecuredPlayerFlutterPlugin {
         break;
       case "audio.onError":
       // If there's an error, we assume the player has stopped.
-        _state = SecuredAudioPlayerState.STOPPED;
+
+        _state = SecuredAudioPlayerState.DESTROYED;
         _playerStateController.addError(call.arguments);
-        // TODO: Handle error arguments here. It is not useful to pass this
-        // to the client since each platform creates different error string
-        // formats so we can't expect client to parse these.
+        // TODO: Handle optional STOPPED STATE
         break;
       default:
         throw new ArgumentError('Unknown method ${call.method} ');
