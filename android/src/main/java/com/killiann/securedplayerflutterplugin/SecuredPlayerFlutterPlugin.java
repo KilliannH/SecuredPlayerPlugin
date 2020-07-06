@@ -137,7 +137,7 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
       mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){
         @Override
         public void onCompletion(MediaPlayer mp) {
-          stop();
+          // todo impl stop();
           channel.invokeMethod("audio.onComplete", null);
         }
       });
