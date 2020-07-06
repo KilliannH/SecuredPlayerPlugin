@@ -36,9 +36,12 @@ class SecuredPlayerFlutterPlugin {
     _channel.setMethodCallHandler(_audioPlayerStateChange);
   }
 
-  /// Play a given url.
-  Future<void> play({String url, String apiKey}) async =>
-      await _channel.invokeMethod('play', {'url': url, 'api_key': apiKey});
+  /// init player with a given url.
+  Future<void> init({String url, String apiKey}) async =>
+      await _channel.invokeMethod('init', {'url': url, 'api_key': apiKey});
+
+
+  Future<void> play() async => await _channel.invokeMethod('play');
 
   /// Pause the currently playing stream.
   Future<void> pause() async => await _channel.invokeMethod('pause');

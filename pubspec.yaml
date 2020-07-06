@@ -1,6 +1,6 @@
 name: securedplayerflutterplugin
 description: A secured audio player.
-version: 1.0.2
+version: 1.0.3.alpha
 homepage: https://github.com/KilliannH/SecuredPlayerPlugin
 
 environment:
