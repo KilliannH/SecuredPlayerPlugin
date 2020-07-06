@@ -13,7 +13,7 @@ void main() {
   runApp(MaterialApp(home: Scaffold(body: AudioApp())));
 }
 
-enum PlayerState { destroyed, playing, paused }
+enum PlayerState { destroyed, initialized, stopped, playing, paused }
 
 class AudioApp extends StatefulWidget {
   @override
@@ -30,7 +30,7 @@ class _AudioAppState extends State<AudioApp> {
 
   String localFilePath;
 
-  PlayerState playerState = PlayerState.destroyed;
+  PlayerState playerState = PlayerState.stopped;
 
   get isPlaying => playerState == PlayerState.playing;
   get isPaused => playerState == PlayerState.paused;
@@ -66,21 +66,20 @@ class _AudioAppState extends State<AudioApp> {
         audioPlayer.onPlayerStateChanged.listen((s) {
           if (s == SecuredAudioPlayerState.PLAYING) {
             setState(() => duration = audioPlayer.duration);
-          } else if (s == SecuredAudioPlayerState.DESTROYED) {
-            onComplete();
+          } else if (s == SecuredAudioPlayerState.STOPPED) {
             setState(() {
-              position = duration;
+              position = Duration();
             });
           }
         }, onError: (msg) {
           setState(() {
-            playerState = PlayerState.destroyed;
+            // assumes that player is stopped on error
+            playerState = PlayerState.stopped;
             duration = Duration(seconds: 0);
             position = Duration(seconds: 0);
           });
         });
-    await audioPlayer.init(url: httpRequest['url'], apiKey: httpRequest['apiKey']);
-    // this will fail bcs httpRequest hasn't been defined
+    await audioPlayer.init(url: 'YOUR URL HERE', apiKey: 'YOUR API KEY HERE');
     playerState = PlayerState.playing;
   }
 
@@ -96,6 +95,28 @@ class _AudioAppState extends State<AudioApp> {
     setState(() => playerState = PlayerState.paused);
   }
 
+  Future stop() async {
+    await audioPlayer.stop();
+    setState(() => playerState = PlayerState.stopped);
+    // will pass through listener setup on init function above
+    // so will call position = Duration();
+  }
+
+  Future skipPrev() async {
+    if(isPlaying) {
+      await audioPlayer.stop();
+      setState(() {
+        playerState = PlayerState.stopped;
+      });
+    } else {
+      print('go to prev song on playlist.....');
+    }
+  }
+
+  void skipNext() {
+    print('go to next song on playlist......');
+  }
+
   Future destroy() async {
     await audioPlayer.destroy();
     setState(() {
@@ -105,7 +126,20 @@ class _AudioAppState extends State<AudioApp> {
   }
 
   void onComplete() {
-    // todo impl STOPPED STATE
+    // todo impl onComplete (skip next, or stop)
+    stop();
+  }
+
+  Future togglePause() async {
+    _positionSubscription = audioPlayer.onAudioPositionChanged
+        .listen((p) => setState(() => position = p));
+    if(isPlaying) {
+      await audioPlayer.pause();
+      setState(() => playerState = PlayerState.paused);
+    } else {
+      await audioPlayer.play();
+      setState(() => playerState = PlayerState.playing);
+    }
   }
 
   @override
@@ -140,26 +174,34 @@ class _AudioAppState extends State<AudioApp> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          IconButton(
-            onPressed: isPlaying ? null : () => play(),
-            iconSize: 64.0,
-            icon: Icon(Icons.play_arrow),
-            color: Colors.cyan,
-          ),
-          IconButton(
-            onPressed: isPlaying ? () => pause() : null,
-            iconSize: 64.0,
-            icon: Icon(Icons.pause),
-            color: Colors.cyan,
-          ),
-          IconButton(
-            onPressed: isPlaying || isPaused ? () => /*impl stop() :*/ null : null,
-            iconSize: 64.0,
-            icon: Icon(Icons.stop),
-            color: Colors.cyan,
-          ),
-        ]),
+      Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        IconButton(
+            iconSize: 32,
+            icon: Icon(Icons.skip_previous),
+            onPressed: () {
+              skipPrev();
+            }
+        ),
+        IconButton(
+            iconSize: 32,
+            icon: isPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow),
+            onPressed: () {
+              setState(() {
+                togglePause();
+              });
+            }
+        ),
+        IconButton(
+            iconSize: 32,
+            icon: Icon(Icons.skip_next),
+            onPressed: () {
+              skipNext();
+            }
+        )
+      ],
+    ),
         if (duration != null)
           Slider(
               value: position?.inMilliseconds?.toDouble() ?? 0.0,
@@ -172,17 +214,6 @@ class _AudioAppState extends State<AudioApp> {
   );
 
   Row _buildProgressView() => Row(mainAxisSize: MainAxisSize.min, children: [
-    Padding(
-      padding: EdgeInsets.all(12.0),
-      child: CircularProgressIndicator(
-        value: position != null && position.inMilliseconds > 0
-            ? (position?.inMilliseconds?.toDouble() ?? 0.0) /
-            (duration?.inMilliseconds?.toDouble() ?? 0.0)
-            : 0.0,
-        valueColor: AlwaysStoppedAnimation(Colors.cyan),
-        backgroundColor: Colors.grey.shade400,
-      ),
-    ),
     Text(
       position != null
           ? "${positionText ?? ''} / ${durationText ?? ''}"

@@ -3,20 +3,11 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 enum SecuredAudioPlayerState {
-  /// Player is stopped. No file is loaded to the player. Calling [resume] or
-  /// [pause] will result in exception.
   DESTROYED,
-
-  /// Currently playing a file. The user can [pause], [resume] or [stop] the
-  /// playback.
+  INITIALIZED,
+  STOPPED,
   PLAYING,
-
-  /// Paused. The user can [resume] the playback without providing the URL.
   PAUSED,
-
-  /// The playback has been completed. This state is the same as [STOPPED],
-  /// however we differentiate it because some clients might want to know when
-  /// the playback is done versus when the user has stopped the playback.
   COMPLETED,
 }
 
@@ -29,7 +20,7 @@ class SecuredPlayerFlutterPlugin {
   final StreamController<Duration> _positionController =
   new StreamController.broadcast();
 
-  SecuredAudioPlayerState _state = SecuredAudioPlayerState.DESTROYED;
+  SecuredAudioPlayerState _state = SecuredAudioPlayerState.STOPPED;
   Duration _duration = const Duration();
 
   SecuredPlayerFlutterPlugin() {
@@ -42,6 +33,8 @@ class SecuredPlayerFlutterPlugin {
 
 
   Future<void> play() async => await _channel.invokeMethod('play');
+
+  Future<void> stop() async => await _channel.invokeMethod('stop');
 
   /// Pause the currently playing stream.
   Future<void> pause() async => await _channel.invokeMethod('pause');
@@ -73,15 +66,31 @@ class SecuredPlayerFlutterPlugin {
         assert(_state == SecuredAudioPlayerState.PLAYING);
         _positionController.add(new Duration(milliseconds: call.arguments));
         break;
+      case "player.initialized":
+        _state = SecuredAudioPlayerState.INITIALIZED;
+        _playerStateController.add(SecuredAudioPlayerState.INITIALIZED);
+        print('PLAYER INITIALIZED');
+        break;
+      case "player.destroyed":
+        _state = SecuredAudioPlayerState.DESTROYED;
+        _playerStateController.add(SecuredAudioPlayerState.DESTROYED);
+        print('PLAYER DESTROYED');
+        break;
       case "audio.onStart":
         _state = SecuredAudioPlayerState.PLAYING;
         _playerStateController.add(SecuredAudioPlayerState.PLAYING);
-        print('PLAYING ${call.arguments}');
+        print('ON START');
         _duration = new Duration(milliseconds: call.arguments);
         break;
       case "audio.onPause":
         _state = SecuredAudioPlayerState.PAUSED;
         _playerStateController.add(SecuredAudioPlayerState.PAUSED);
+        print('ON PAUSE');
+        break;
+      case "audio.onStop":
+        _state = SecuredAudioPlayerState.STOPPED;
+        _playerStateController.add(SecuredAudioPlayerState.STOPPED);
+        print('ON STOP');
         break;
       case "audio.onDestroy":
         _state = SecuredAudioPlayerState.DESTROYED;
@@ -93,10 +102,8 @@ class SecuredPlayerFlutterPlugin {
         break;
       case "audio.onError":
       // If there's an error, we assume the player has stopped.
-
-        _state = SecuredAudioPlayerState.DESTROYED;
+        _state = SecuredAudioPlayerState.STOPPED;
         _playerStateController.addError(call.arguments);
-        // TODO: Handle optional STOPPED STATE
         break;
       default:
         throw new ArgumentError('Unknown method ${call.method} ');
