@@ -56,7 +56,6 @@ class SecuredPlayerFlutterPlugin {
 
   Future<void> _audioPlayerStateChange(MethodCall call) async {
     dynamic value = call.arguments;
-    print(value);
     switch (call.method) {
       case "audio.onDuration":
         if (this.durationHandler != null) {
