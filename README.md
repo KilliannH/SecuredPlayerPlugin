@@ -2,7 +2,7 @@
 
 This was originaly a fork from rxlabz's audioplayer, but since the v1.1.0, it's also forked from the amazing team behind luanpotter's audioplayer.
 
-Again, all rewards go to luanpotter and rxlabz work for this plugin. A huge thanks for them.
+Again, all rewards go to luanpotter and rxlabz work for this plugin. A huge thanks to them.
 
 This release allows developers to query a remote url via HTTP with an Authorization Header.
 
