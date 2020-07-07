@@ -1,28 +1,28 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
 
-enum SecuredAudioPlayerState {
-  DESTROYED,
-  INITIALIZED,
-  STOPPED,
-  PLAYING,
-  PAUSED,
-  COMPLETED,
-}
+typedef void TimeChangeHandler(Duration duration);
+typedef void ErrorHandler(String message);
 
 const MethodChannel _channel = const MethodChannel('securedPlayerFlutterPlugin');
 
 class SecuredPlayerFlutterPlugin {
-  final StreamController<SecuredAudioPlayerState> _playerStateController =
-  new StreamController.broadcast();
 
-  final StreamController<Duration> _positionController =
-  new StreamController.broadcast();
+  /// This handler returns the duration of the file, when it's available (it might take a while because it's being downloaded or buffered).
+  TimeChangeHandler durationHandler;
 
-  SecuredAudioPlayerState _state = SecuredAudioPlayerState.STOPPED;
-  Duration _duration = const Duration();
+  /// This handler updates the current position of the audio. You can use it to make a progress bar, for instance.
+  TimeChangeHandler positionHandler;
 
+  /// This handler is called when the audio finishes playing; it's used in the loop method, for instance.
+  ///
+  /// It does not fire when you interrupt the audio with pause or stop.
+  VoidCallback completionHandler;
+
+  /// This is called when an unexpected error is thrown in the native code.
+  ErrorHandler errorHandler;
   SecuredPlayerFlutterPlugin() {
     _channel.setMethodCallHandler(_audioPlayerStateChange);
   }
@@ -34,77 +34,69 @@ class SecuredPlayerFlutterPlugin {
 
   Future<void> play() async => await _channel.invokeMethod('play');
 
+  // fake stop as it pauses te stream an seek it to 0.
   Future<void> stop() async => await _channel.invokeMethod('stop');
 
   /// Pause the currently playing stream.
   Future<void> pause() async => await _channel.invokeMethod('pause');
 
+  Future<int> seek(Duration position) {
+    double positionInSeconds =
+        position.inMicroseconds / Duration.microsecondsPerSecond;
+    return _channel.invokeMethod('seek', {'position': positionInSeconds});
+  }
+
   /// Destroy the player.
   Future<void> destroy() async => await _channel.invokeMethod('destroy');
 
-  /// Stream for subscribing to player state change events.
-  Stream<SecuredAudioPlayerState> get onPlayerStateChanged =>
-      _playerStateController.stream;
-
-  /// Reports what the player is currently doing.
-  SecuredAudioPlayerState get state => _state;
-
-  /// Reports the duration of the current media being played. It might return
-  /// 0 if we have not determined the length of the media yet. It is best to
-  /// call this from a state listener when the state has become
-  /// [AudioPlayerState.PLAYING].
-  Duration get duration => _duration;
-
-  /// Stream for subscribing to audio position change events. Roughly fires
-  /// every 200 milliseconds. Will continously update the position of the
-  /// playback if the status is [AudioPlayerState.PLAYING].
-  Stream<Duration> get onAudioPositionChanged => _positionController.stream;
-
   Future<void> _audioPlayerStateChange(MethodCall call) async {
+    dynamic value = call.arguments;
+    print(value);
     switch (call.method) {
+      case "audio.onDuration":
+        if (this.durationHandler != null) {
+          await this.durationHandler(new Duration(milliseconds: value));
+        }
+        break;
       case "audio.onCurrentPosition":
-        assert(_state == SecuredAudioPlayerState.PLAYING);
-        _positionController.add(new Duration(milliseconds: call.arguments));
+        if (this.positionHandler != null) {
+          await this.positionHandler(new Duration(milliseconds: value));
+        }
         break;
+      case 'audio.onComplete':
+        if (this.completionHandler != null) {
+          await this.completionHandler();
+        }
+        break;
+      case 'audio.onError':
+        if (this.errorHandler != null) {
+          await this.errorHandler(value);
+        }
+        break;
+        // first call to initiate slider & timers as soon as player is initialized
       case "player.initialized":
-        _state = SecuredAudioPlayerState.INITIALIZED;
-        _playerStateController.add(SecuredAudioPlayerState.INITIALIZED);
-        print('PLAYER INITIALIZED');
-        break;
-      case "player.destroyed":
-        _state = SecuredAudioPlayerState.DESTROYED;
-        _playerStateController.add(SecuredAudioPlayerState.DESTROYED);
+        this.durationHandler(new Duration(milliseconds: value));
         print('PLAYER DESTROYED');
         break;
+      case "player.destroyed":
+        print('PLAYER DESTROYED');
+        break;
+
+        ///// function calls for debug purposes /////
       case "audio.onStart":
-        _state = SecuredAudioPlayerState.PLAYING;
-        _playerStateController.add(SecuredAudioPlayerState.PLAYING);
         print('ON START');
-        _duration = new Duration(milliseconds: call.arguments);
         break;
       case "audio.onPause":
-        _state = SecuredAudioPlayerState.PAUSED;
-        _playerStateController.add(SecuredAudioPlayerState.PAUSED);
         print('ON PAUSE');
         break;
       case "audio.onStop":
-        _state = SecuredAudioPlayerState.STOPPED;
-        _playerStateController.add(SecuredAudioPlayerState.STOPPED);
         print('ON STOP');
         break;
-      case "audio.onDestroy":
-        _state = SecuredAudioPlayerState.DESTROYED;
-        _playerStateController.add(SecuredAudioPlayerState.DESTROYED);
-        break;
       case "audio.onComplete":
-        _state = SecuredAudioPlayerState.COMPLETED;
-        _playerStateController.add(SecuredAudioPlayerState.COMPLETED);
+        print("ON COMPLETE");
         break;
-      case "audio.onError":
-      // If there's an error, we assume the player has stopped.
-        _state = SecuredAudioPlayerState.STOPPED;
-        _playerStateController.addError(call.arguments);
-        break;
+        ///// endof debug functions /////
+
       default:
         throw new ArgumentError('Unknown method ${call.method} ');
     }

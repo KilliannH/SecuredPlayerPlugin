@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import io.flutter.Log;
@@ -30,18 +31,12 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
   private MethodChannel channel;
   private AudioManager am;
   private final Handler handler = new Handler();
+  private UpdateCallback positionUpdates;
   private MediaPlayer mediaPlayer;
   private Context mContext;
 
-  // This static function is optional and equivalent to onAttachedToEngine. It supports the old
-  // pre-Flutter-1.12 Android projects. You are encouraged to continue supporting
-  // plugin registration via this function while apps migrate to use the new Android APIs
-  // post-flutter-1.12 via https://flutter.dev/go/android-project-migration.
-  //
-  // It is encouraged to share logic between onAttachedToEngine and registerWith to keep
-  // them functionally equivalent. Only one of onAttachedToEngine or registerWith will be called
-  // depending on the user's project. onAttachedToEngine or registerWith must both be defined
-  // in the same class.
+  // function from flutter to link the plugin to java code base.
+  // NB : flutter hot reload will not work if you modify java parts bcs it has to be compiled by gradle.
   public static void registerWith(Registrar registrar) {
     SecuredPlayerFlutterPlugin instance = new SecuredPlayerFlutterPlugin();
     instance.initInstance(registrar.messenger(), registrar.context());
@@ -74,6 +69,11 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
         pause();
         result.success(null);
         break;
+      case "seek":
+        double position = call.argument("position");
+        seek(position);
+        result.success(null);
+        break;
       case "destroy":
         destroy();
         result.success(null);
@@ -84,7 +84,7 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
   }
 
   private void destroy() {
-    handler.removeCallbacks(sendData);
+    stopPositionUpdates();
     if (mediaPlayer != null) {
       mediaPlayer.stop();
       mediaPlayer.release();
@@ -94,15 +94,14 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
   }
 
   private void pause() {
-    handler.removeCallbacks(sendData);
     if (mediaPlayer != null) {
       mediaPlayer.pause();
-      channel.invokeMethod("audio.onPause", true);
+      channel.invokeMethod("audio.onPause", null);
     }
   }
 
   private void stop() {
-    handler.removeCallbacks(sendData);
+    stopPositionUpdates();
     if (mediaPlayer != null) {
       mediaPlayer.pause();
       mediaPlayer.seekTo(0);
@@ -112,12 +111,31 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
 
   private void play() {
     if(mediaPlayer != null) {
-      handler.post(sendData);
+      sendPositionUpdates();
       mediaPlayer.start();
       channel.invokeMethod("audio.onStart", mediaPlayer.getDuration());
     } else {
       Log.w("mediaPlayer", "error on play(), mediaPlayer is not defined");
     }
+  }
+
+  private void seek(final double position) {
+    if (mediaPlayer != null) {
+      mediaPlayer.seekTo((int) (position * 1000));
+    }
+  }
+
+  private void sendPositionUpdates() {
+    if (positionUpdates != null) {
+      return;
+    }
+    positionUpdates = new UpdateCallback(mediaPlayer, channel, handler, this);
+    handler.post(positionUpdates);
+  }
+
+  private void stopPositionUpdates() {
+    positionUpdates = null;
+    handler.removeCallbacksAndMessages(null);
   }
 
   private void init(String url, String api_key) {
@@ -142,7 +160,7 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
       mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener(){
         @Override
         public void onPrepared(MediaPlayer mp) {
-          channel.invokeMethod("player.initialized", null);
+          channel.invokeMethod("player.initialized", mp.getDuration());
         }
       });
 
@@ -162,7 +180,6 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
     } else {
       Log.w("mediaPlayer", "error on init(), mediaPlayer is already initialized");
     }
-    handler.post(sendData);
   }
 
   @Override
@@ -177,19 +194,35 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
     am = null;
   }
 
-  private final Runnable sendData = new Runnable(){
-    public void run(){
-      try {
-        if (!mediaPlayer.isPlaying()) {
-          handler.removeCallbacks(sendData);
-        }
-        int time = mediaPlayer.getCurrentPosition();
-        channel.invokeMethod("audio.onCurrentPosition", time);
-        handler.postDelayed(this, 200);
-      }
-      catch (Exception e) {
-        Log.w(ID, "When running handler", e);
-      }
+  private static final class UpdateCallback implements Runnable {
+
+    final MediaPlayer mediaPlayer;
+    final MethodChannel channel;
+    final Handler handler;
+    final SecuredPlayerFlutterPlugin securedPlayerFlutterPlugin;
+
+    UpdateCallback(final MediaPlayer mediaPlayer,
+                   final MethodChannel channel,
+                   final Handler handler,
+                   final SecuredPlayerFlutterPlugin securedPlayerFlutterPlugin) {
+      this.mediaPlayer = mediaPlayer;
+      this.channel = channel;
+      this.handler = handler;
+      this.securedPlayerFlutterPlugin = securedPlayerFlutterPlugin;
     }
-  };
+
+    @Override
+    public void run() {
+
+      if (mediaPlayer == null || channel == null || handler == null || securedPlayerFlutterPlugin == null) {
+        Log.w("debug", "runnable does not do anything");
+        return;
+      }
+        final int duration = mediaPlayer.getDuration();
+        final int time = mediaPlayer.getCurrentPosition();
+        channel.invokeMethod("audio.onDuration", duration);
+        channel.invokeMethod("audio.onCurrentPosition", time);
+        handler.postDelayed(this, 100);
+    }
+  }
 }

@@ -21,28 +21,21 @@ class AudioApp extends StatefulWidget {
 }
 
 class _AudioAppState extends State<AudioApp> {
-  Duration duration;
-  Duration position;
+  Duration _duration;
+  Duration _position;
 
   Map<String, dynamic> httpRequest;
 
-  SecuredPlayerFlutterPlugin audioPlayer;
+  SecuredPlayerFlutterPlugin _audioPlayer;
 
-  String localFilePath;
+  PlayerState _playerState;
 
-  PlayerState playerState = PlayerState.stopped;
+  get _isPlaying => _playerState == PlayerState.playing;
+  get _isPaused => _playerState == PlayerState.paused;
+  get _durationText => _duration?.toString()?.split('.')?.first ?? '';
+  get _positionText => _position?.toString()?.split('.')?.first ?? '';
 
-  get isPlaying => playerState == PlayerState.playing;
-  get isPaused => playerState == PlayerState.paused;
-
-  get durationText =>
-      duration != null ? duration.toString().split('.').first : '';
-
-  get positionText =>
-      position != null ? position.toString().split('.').first : '';
-
-  StreamSubscription _positionSubscription;
-  StreamSubscription _audioPlayerStateSubscription;
+  _AudioAppState();
 
   @override
   void initState() {
@@ -52,56 +45,58 @@ class _AudioAppState extends State<AudioApp> {
 
   @override
   void dispose() {
-    _positionSubscription.cancel();
-    _audioPlayerStateSubscription.cancel();
-    audioPlayer.destroy();
+    _audioPlayer.destroy();
     super.dispose();
   }
 
   void initAudioPlayer() async {
-    audioPlayer = SecuredPlayerFlutterPlugin();
-    _positionSubscription = audioPlayer.onAudioPositionChanged
-        .listen((p) => setState(() => position = p));
-    _audioPlayerStateSubscription =
-        audioPlayer.onPlayerStateChanged.listen((s) {
-          if (s == SecuredAudioPlayerState.INITIALIZED) {
-            onInitialized();
-          } else if (s == SecuredAudioPlayerState.PLAYING) {
-            setState(() => duration = audioPlayer.duration);
-          }
-        }, onError: (msg) {
-          setState(() {
-            // assumes that player is stopped on error
-            playerState = PlayerState.stopped;
-            duration = Duration(seconds: 0);
-            position = Duration(seconds: 0);
-          });
-        });
-    await audioPlayer.init(url: 'YOUR URL HERE', apiKey: 'YOUR API_KEY HERE');
-    playerState = PlayerState.initialized;
+    _audioPlayer = SecuredPlayerFlutterPlugin();
+
+    _audioPlayer.durationHandler = (d) => setState(() {
+      _duration = d;
+    });
+
+    _audioPlayer.positionHandler = (p) => setState(() {
+      _position = p;
+    });
+
+    _audioPlayer.completionHandler = () {
+      _onComplete();
+    };
+
+    _audioPlayer.errorHandler = (msg) {
+      print('audioPlayer error : $msg');
+      setState(() {
+        _playerState = PlayerState.stopped;
+        _duration = new Duration(seconds: 0);
+        _position = new Duration(seconds: 0);
+      });
+    };
+    await _audioPlayer.init(url: 'YOUR URL HERE',
+        apiKey: 'YOUR API_KEY HERE');
+    _playerState = PlayerState.initialized;
+    _onInitialized();
   }
 
   Future play() async {
-    await audioPlayer.play();
+    await _audioPlayer.play();
     setState(() {
-      playerState = PlayerState.playing;
+      _playerState = PlayerState.playing;
     });
   }
 
   Future pause() async {
-    await audioPlayer.pause();
-    setState(() => playerState = PlayerState.paused);
+    await _audioPlayer.pause();
+    setState(() => _playerState = PlayerState.paused);
   }
 
   Future stop() async {
-    await audioPlayer.stop();
-    setState(() {
-      position = Duration();
-      playerState = PlayerState.stopped;
-    });
-    // will pass through listener setup on init function above
-    // so will call position = Duration();
-  }
+    await _audioPlayer.stop();
+      setState(() {
+        _position = Duration();
+        _playerState = PlayerState.stopped;
+      });
+    }
 
   Future skipPrev() async {
       print('go to prev song on playlist.....');
@@ -112,26 +107,26 @@ class _AudioAppState extends State<AudioApp> {
   }
 
   Future destroy() async {
-    await audioPlayer.destroy();
+    await _audioPlayer.destroy();
     setState(() {
-      playerState = PlayerState.destroyed;
+      _playerState = PlayerState.destroyed;
     });
   }
 
-  void onComplete() {}
+  void _onComplete() {}
 
   // for now, play the song as soon as the player is initialized
-  void onInitialized() => play();
+  void _onInitialized() {
+    play();
+  }
 
   Future togglePause() async {
-    _positionSubscription = audioPlayer.onAudioPositionChanged
-        .listen((p) => setState(() => position = p));
-    if(isPlaying) {
-      await audioPlayer.pause();
-      setState(() => playerState = PlayerState.paused);
+    if(_isPlaying) {
+      await _audioPlayer.pause();
+      setState(() => _playerState = PlayerState.paused);
     } else {
-      await audioPlayer.play();
-      setState(() => playerState = PlayerState.playing);
+      await _audioPlayer.play();
+      setState(() => _playerState = PlayerState.playing);
     }
   }
 
@@ -179,7 +174,7 @@ class _AudioAppState extends State<AudioApp> {
         ),
         IconButton(
             iconSize: 32,
-            icon: isPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow),
+            icon: _isPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow),
             onPressed: () {
               setState(() {
                 togglePause();
@@ -195,22 +190,30 @@ class _AudioAppState extends State<AudioApp> {
         )
       ],
     ),
-        if (duration != null)
+        if (_duration != null)
           Slider(
-              value: position?.inMilliseconds?.toDouble() ?? 0.0,
-              onChanged: null,
-              min: 0.0,
-              max: duration.inMilliseconds.toDouble()),
-        if (position != null) _buildProgressView()
+          onChanged: (v) {
+          final Position = v * _duration.inMilliseconds;
+          _audioPlayer
+              .seek(Duration(milliseconds: Position.round()));
+          },
+          value: (_position != null &&
+          _duration != null &&
+          _position.inMilliseconds > 0 &&
+          _position.inMilliseconds < _duration.inMilliseconds)
+          ? _position.inMilliseconds / _duration.inMilliseconds
+              : 0.0,
+          ),
+        if (_position != null) _buildProgressView()
       ],
     ),
   );
 
   Row _buildProgressView() => Row(mainAxisSize: MainAxisSize.min, children: [
     Text(
-      position != null
-          ? "${positionText ?? ''} / ${durationText ?? ''}"
-          : duration != null ? durationText : '',
+      _position != null
+          ? "${_positionText ?? ''} / ${_durationText ?? ''}"
+          : _duration != null ? _durationText : '',
       style: TextStyle(fontSize: 24.0),
     )
   ]);
