@@ -64,12 +64,10 @@ class _AudioAppState extends State<AudioApp> {
         .listen((p) => setState(() => position = p));
     _audioPlayerStateSubscription =
         audioPlayer.onPlayerStateChanged.listen((s) {
-          if (s == SecuredAudioPlayerState.PLAYING) {
+          if (s == SecuredAudioPlayerState.INITIALIZED) {
+            onInitialized();
+          } else if (s == SecuredAudioPlayerState.PLAYING) {
             setState(() => duration = audioPlayer.duration);
-          } else if (s == SecuredAudioPlayerState.STOPPED) {
-            setState(() {
-              position = Duration();
-            });
           }
         }, onError: (msg) {
           setState(() {
@@ -79,8 +77,8 @@ class _AudioAppState extends State<AudioApp> {
             position = Duration(seconds: 0);
           });
         });
-    await audioPlayer.init(url: 'YOUR URL HERE', apiKey: 'YOUR API KEY HERE');
-    playerState = PlayerState.playing;
+    await audioPlayer.init(url: 'http://192.168.1.22:3000/api/stream/katy_perry_oliver_heldens_daisies.mp3', apiKey: 'hello_dolly1234');
+    playerState = PlayerState.initialized;
   }
 
   Future play() async {
@@ -97,20 +95,16 @@ class _AudioAppState extends State<AudioApp> {
 
   Future stop() async {
     await audioPlayer.stop();
-    setState(() => playerState = PlayerState.stopped);
+    setState(() {
+      position = Duration();
+      playerState = PlayerState.stopped;
+    });
     // will pass through listener setup on init function above
     // so will call position = Duration();
   }
 
   Future skipPrev() async {
-    if(isPlaying) {
-      await audioPlayer.stop();
-      setState(() {
-        playerState = PlayerState.stopped;
-      });
-    } else {
       print('go to prev song on playlist.....');
-    }
   }
 
   void skipNext() {
@@ -121,14 +115,13 @@ class _AudioAppState extends State<AudioApp> {
     await audioPlayer.destroy();
     setState(() {
       playerState = PlayerState.destroyed;
-      position = Duration();
     });
   }
 
-  void onComplete() {
-    // todo impl onComplete (skip next, or stop)
-    stop();
-  }
+  void onComplete() {}
+
+  // for now, play the song as soon as the player is initialized
+  void onInitialized() => play();
 
   Future togglePause() async {
     _positionSubscription = audioPlayer.onAudioPositionChanged
@@ -179,9 +172,9 @@ class _AudioAppState extends State<AudioApp> {
       children: <Widget>[
         IconButton(
             iconSize: 32,
-            icon: Icon(Icons.skip_previous),
+            icon: Icon(Icons.stop),
             onPressed: () {
-              skipPrev();
+              stop();
             }
         ),
         IconButton(

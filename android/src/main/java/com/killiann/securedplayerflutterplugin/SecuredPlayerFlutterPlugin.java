@@ -102,19 +102,19 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
   }
 
   private void stop() {
+    handler.removeCallbacks(sendData);
     if (mediaPlayer != null) {
       mediaPlayer.pause();
       mediaPlayer.seekTo(0);
       channel.invokeMethod("audio.onStop", null);
     }
-    handler.removeCallbacks(sendData);
   }
 
   private void play() {
     if(mediaPlayer != null) {
+      handler.post(sendData);
       mediaPlayer.start();
       channel.invokeMethod("audio.onStart", mediaPlayer.getDuration());
-      handler.post(sendData);
     } else {
       Log.w("mediaPlayer", "error on play(), mediaPlayer is not defined");
     }
@@ -143,16 +143,12 @@ public class SecuredPlayerFlutterPlugin implements FlutterPlugin, MethodCallHand
         @Override
         public void onPrepared(MediaPlayer mp) {
           channel.invokeMethod("player.initialized", null);
-          mediaPlayer.start();
-          channel.invokeMethod("audio.onStart", mediaPlayer.getDuration());
         }
       });
 
       mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){
         @Override
         public void onCompletion(MediaPlayer mp) {
-          // todo impl stop();
-          stop();
           channel.invokeMethod("audio.onComplete", null);
         }
       });
