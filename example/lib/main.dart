@@ -64,6 +64,16 @@ class _AudioAppState extends State<AudioApp> {
       _onComplete();
     };
 
+    _audioPlayer.initializedHandler = () {
+      _onInitialized();
+      _playerState = PlayerState.initialized;
+    };
+
+    _audioPlayer.destroyedHandler = () {
+      // impl what to do after player has been destroyed,
+      // create a new one with new song in it after a skipPrev, skipNext..
+    };
+
     _audioPlayer.errorHandler = (msg) {
       print('audioPlayer error : $msg');
       setState(() {
@@ -74,8 +84,6 @@ class _AudioAppState extends State<AudioApp> {
     };
     await _audioPlayer.init(url: 'YOUR URL HERE',
         apiKey: 'YOUR API_KEY HERE');
-    _playerState = PlayerState.initialized;
-    _onInitialized();
   }
 
   Future play() async {

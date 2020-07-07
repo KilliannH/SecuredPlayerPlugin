@@ -21,6 +21,11 @@ class SecuredPlayerFlutterPlugin {
   /// It does not fire when you interrupt the audio with pause or stop.
   VoidCallback completionHandler;
 
+  // Fires when player is initialized
+  VoidCallback initializedHandler;
+
+  VoidCallback destroyedHandler;
+
   /// This is called when an unexpected error is thrown in the native code.
   ErrorHandler errorHandler;
   SecuredPlayerFlutterPlugin() {
@@ -75,11 +80,18 @@ class SecuredPlayerFlutterPlugin {
         break;
         // first call to initiate slider & timers as soon as player is initialized
       case "player.initialized":
-        this.durationHandler(new Duration(milliseconds: value));
-        print('PLAYER DESTROYED');
+        if(this.initializedHandler != null) {
+          this.durationHandler(new Duration(milliseconds: value));
+          this.positionHandler(new Duration(seconds: 0));
+          await this.initializedHandler();
+          print('PLAYER INITIALIZED');
+        }
         break;
       case "player.destroyed":
-        print('PLAYER DESTROYED');
+        if(this.destroyedHandler != null) {
+          await this.destroyedHandler();
+          print('PLAYER DESTROYED');
+        }
         break;
 
         ///// function calls for debug purposes /////
