@@ -77,7 +77,7 @@ class _AudioAppState extends State<AudioApp> {
             position = Duration(seconds: 0);
           });
         });
-    await audioPlayer.init(url: 'http://192.168.1.22:3000/api/stream/katy_perry_oliver_heldens_daisies.mp3', apiKey: 'hello_dolly1234');
+    await audioPlayer.init(url: 'YOUR URL HERE', apiKey: 'YOUR API_KEY HERE');
     playerState = PlayerState.initialized;
   }
 
