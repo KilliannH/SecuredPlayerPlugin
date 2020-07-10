@@ -1,4 +1,4 @@
-## 1.1.1
+## 1.1.2
 
 This was originaly a fork from rxlabz's audioplayer,
 but since the v1.1.0, it's also forked from the amazing team behind
@@ -10,6 +10,8 @@ A huge thanks for them.
 
 This release allows developers to query a remote url via HTTP with an Authorization Header.
 
+--- changelog since 1.1.2
+debug on player completion listener
 --- changelog since 1.1.1
 Added handlers for initialized & destroyed states
 Updated Readme

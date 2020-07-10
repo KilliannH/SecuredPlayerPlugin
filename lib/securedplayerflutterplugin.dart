@@ -69,6 +69,7 @@ class SecuredPlayerFlutterPlugin {
         break;
       case 'audio.onComplete':
         if (this.completionHandler != null) {
+          print('ON COMPLETE');
           await this.completionHandler();
         }
         break;
@@ -102,9 +103,6 @@ class SecuredPlayerFlutterPlugin {
         break;
       case "audio.onStop":
         print('ON STOP');
-        break;
-      case "audio.onComplete":
-        print("ON COMPLETE");
         break;
         ///// endof debug functions /////
 

@@ -121,7 +121,9 @@ class _AudioAppState extends State<AudioApp> {
     });
   }
 
-  void _onComplete() {}
+  void _onComplete() {
+    print('bibi');
+  }
 
   // for now, play the song as soon as the player is initialized
   void _onInitialized() {
