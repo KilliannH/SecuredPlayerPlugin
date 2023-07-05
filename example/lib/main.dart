@@ -106,13 +106,9 @@ class _AudioAppState extends State<AudioApp> {
       });
     }
 
-  Future skipPrev() async {
-      print('go to prev song on playlist.....');
-  }
+  Future skipPrev() async {}
 
-  void skipNext() {
-    print('go to next song on playlist......');
-  }
+  void skipNext() {}
 
   Future destroy() async {
     await _audioPlayer.destroy();
@@ -121,9 +117,7 @@ class _AudioAppState extends State<AudioApp> {
     });
   }
 
-  void _onComplete() {
-    print('bibi');
-  }
+  void _onComplete() {}
 
   // for now, play the song as soon as the player is initialized
   void _onInitialized() {
